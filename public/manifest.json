@@ -1,0 +1,16 @@
+{
+  "short_name": "MindPitch",
+  "name": "MindPitch — Youth Soccer Mentality",
+  "description": "Mentality development for youth soccer players",
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0D1B2A",
+  "background_color": "#F7F9F5",
+  "categories": ["sports", "education"],
+  "scope": "/"
+}

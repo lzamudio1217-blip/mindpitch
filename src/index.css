@@ -1,0 +1,48 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #F7F9F5;
+  overscroll-behavior: none;
+  overflow-x: hidden;
+}
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Safe area insets for iPhone notch / home bar */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Smooth scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove default button styles */
+button {
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+
+/* Remove textarea resize on mobile */
+textarea {
+  -webkit-appearance: none;
+}
+
+/* Scrollbar hide for cleaner mobile feel */
+::-webkit-scrollbar {
+  display: none;
+}
