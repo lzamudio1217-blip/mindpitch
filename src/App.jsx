@@ -70,8 +70,8 @@ const s = {
   badge:(bg,text)=>({ fontSize:11, fontWeight:500, padding:"3px 9px", borderRadius:20, background:bg, color:text, display:"inline-block" }),
   btn:(bg,text,full)=>({ background:bg, color:text, border:"none", borderRadius:10, padding:"11px 18px", fontSize:14, fontWeight:500, cursor:"pointer", width:full?"100%":"auto", display:full?"block":"inline-block", textAlign:"center" }),
   btnOutline:(full)=>({ background:"transparent", color:C.navy, border:`1px solid ${C.grayMid}`, borderRadius:10, padding:"11px 18px", fontSize:14, fontWeight:500, cursor:"pointer", width:full?"100%":"auto" }),
-  input:{ width:"100%", padding:"10px 12px", borderRadius:8, border:`1px solid ${C.grayMid}`, fontSize:14, color:C.text, background:C.white, boxSizing:"border-box", marginBottom:10 },
-  textarea:{ width:"100%", padding:"10px 12px", borderRadius:8, border:`1px solid ${C.grayMid}`, fontSize:14, color:C.text, background:C.white, boxSizing:"border-box", resize:"vertical", minHeight:90, lineHeight:1.6 },
+  input:{ width:"100%", padding:"10px 12px", borderRadius:8, border:`1px solid ${C.grayMid}`, fontSize:14, color:"#111111", background:C.white, caretColor:"#111111", boxSizing:"border-box", marginBottom:10 },
+  textarea:{ width:"100%", padding:"10px 12px", borderRadius:8, border:`1px solid ${C.grayMid}`, fontSize:14, color:"#111111", background:C.white, caretColor:"#111111", boxSizing:"border-box", resize:"vertical", minHeight:90, lineHeight:1.6 },
   tabBar:{ display:"flex", background:C.white, borderTop:`1px solid ${C.grayMid}30`, position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, zIndex:100 },
   tab:(active)=>({ flex:1, padding:"10px 0", display:"flex", flexDirection:"column", alignItems:"center", gap:3, cursor:"pointer", background:"transparent", border:"none", color:active?C.green:C.gray }),
   tabLabel:(active)=>({ fontSize:10, fontWeight:active?600:400, color:active?C.green:C.gray }),
@@ -125,7 +125,7 @@ function Avatar({ player, size=36 }) {
 }
 
 // ── AI Chat Component (reused for both debrief and open chat) ─────────────────
-function AIChat({ player, initialMessages=[], systemContext="", placeholder="Talk to your coach...", accentColor=C.green, onBack=null, backLabel="Back" }) {
+function AIChat({ player, initialMessages=[], systemContext="", placeholder="Talk to your coach...", accentColor=C.green, onBack=null, backLabel="Back", bottomOffset=0 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -179,7 +179,7 @@ function AIChat({ player, initialMessages=[], systemContext="", placeholder="Tal
         </div>
       )}
 
-      <div style={{ flex:1, overflowY:"auto", padding:"16px", paddingBottom:80 }}>
+      <div style={{ flex:1, overflowY:"auto", padding:"16px", paddingBottom: bottomOffset ? 160 : 80 }}>
         {messages.length === 0 && (
           <div style={{ textAlign:"center", padding:"40px 20px 20px" }}>
             <div style={{ width:52, height:52, borderRadius:"50%", background:accentColor+"20", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
@@ -227,9 +227,9 @@ function AIChat({ player, initialMessages=[], systemContext="", placeholder="Tal
         <div ref={bottomRef}/>
       </div>
 
-      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, background:C.white, borderTop:`1px solid ${C.grayMid}30`, padding:"10px 12px", zIndex:50 }}>
+      <div style={{ position:"fixed", bottom: bottomOffset, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, background:C.white, borderTop:`1px solid ${C.grayMid}30`, padding:"10px 12px", zIndex:90 }}>
         <div style={{ display:"flex", gap:8, alignItems:"flex-end" }}>
-          <textarea ref={inputRef} style={{ ...s.textarea, flex:1, minHeight:40, maxHeight:100, marginBottom:0, borderColor:input.trim()?accentColor:C.grayMid, borderRadius:12, padding:"10px 12px", fontSize:14, resize:"none" }} placeholder={placeholder} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} rows={1}/>
+          <textarea ref={inputRef} style={{ ...s.textarea, flex:1, minHeight:40, maxHeight:100, marginBottom:0, borderColor:input.trim()?accentColor:C.grayMid, borderRadius:12, padding:"10px 12px", fontSize:14, resize:"none", color:"#111111", WebkitTextFillColor:"#111111", caretColor:"#111111", background:C.white }} placeholder={placeholder} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} rows={1}/>
           <button style={{ width:40, height:40, borderRadius:10, background:input.trim()?accentColor:C.grayLight, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }} onClick={send} disabled={!input.trim()||loading}>
             <Icon name="send" size={16} color={input.trim()?C.white:C.grayMid}/>
           </button>
@@ -360,6 +360,7 @@ function OpenCoachChat({ player, assignments }) {
       systemContext={context}
       placeholder="Ask your coach anything..."
       accentColor={C.green}
+      bottomOffset={58}
     />
   );
 }
