@@ -977,7 +977,7 @@ function CoachRoster({ players, assignments, onViewPlayer, onAddPlayer }) {
         <button style={{ ...s.btn(C.green,C.white), marginLeft:"auto" }} onClick={onAddPlayer}><Icon name="plus" size={16} color={C.white}/></button>
       </div>
       <div style={s.card}>
-        {players.map((player,i)=>{ const pa=assignments.filter(a=>a.playerId===player.id); const latest=pa.sort((a,b)=>new Date(b.assignedAt)-new Date(a.assignedAt))[0]; const mod=latest?getModule(latest.moduleId):null; const done=pa.filter(a=>a.status==="completed").length; return (
+        {players.map((player,i)=>{ const pa=assignments.filter(a=>a.playerId===player.id); const latest=pa.sort((a,b)=>new Date(b.assignedAt)-new Date(a.assignedAt))[0]; const mod = latest ? (getModule(latest.moduleId) || latest.moduleData) : null; const done=pa.filter(a=>a.status==="completed").length; return (
           <div key={player.id}>
             {i>0&&<div style={s.divider}/>}
             <div style={{ ...s.cardPad, cursor:"pointer" }} onClick={()=>onViewPlayer(player)}>
@@ -1035,7 +1035,7 @@ function PlayerDetail({ player, assignments, onBack, onAssignModule, onEdit, onR
       {pa.length>0&&(
         <div style={{ marginTop:20 }}>
           <div style={s.sectionTitle}>Module history</div>
-          {pa.map(a=>{ const mod=getModule(a.moduleId); if(!mod)return null; return (
+          {pa.map(a=>{ const mod = getModule(a.moduleId) || a.moduleData; if(!mod)return null; return (
             <div key={a.id} style={{ ...s.card, borderLeft:`3px solid ${mod.color}` }}>
               <div style={s.cardPad}>
                 <div style={{ ...s.row, marginBottom:8 }}>
@@ -1383,8 +1383,8 @@ export default function App() {
           ):(
             <>
               <div style={{ ...s.tabBar, top:57, bottom:"auto", borderBottom:`1px solid ${C.grayMid}30`, borderTop:"none" }}>
-                <div style={{ display:"flex", width:"100%", padding:"4px 8px", gap:4 }}>
-                  {players.slice(0,5).map(p=>(
+                <div style={{display:"flex", gap:16, overflowX:"auto", padding:"14px 12px", background:C.white, WebkitOverflowScrolling:"touch"}}>
+                  {players.map(p=>(
                     <div key={p.id} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, cursor:"pointer", padding:"6px 0" }} onClick={()=>setViewingAs(p)}>
                       <div style={{ ...s.avatar(p.avatarColor,p.avatarText,viewingAs.id===p.id?32:28), border:viewingAs.id===p.id?`2px solid ${C.green}`:"none" }}>{p.avatar}</div>
                       <span style={{ fontSize:9, color:viewingAs.id===p.id?C.green:C.gray, fontWeight:viewingAs.id===p.id?600:400 }}>{p.name.split(" ")[0]}</span>
