@@ -60,7 +60,7 @@ const MODULES_LIBRARY_ES = [
 ];
 
 // ── Language system ────────────────────────────────────────────────────────────
-const LANG = {
+/* const LANG = {
   en: {
     dashboard:"Dashboard", roster:"Roster", builder:"Builder", addPlayer:"Add player",
     assignModule:"Assign new module", noPlayers:"No players yet",
@@ -117,12 +117,14 @@ const LANG = {
   }
 };
 
-function t(lang, key) { return (LANG[lang]||LANG.en)[key] || key; }
-function getModulesLibrary(lang) { return lang==="es" ? MODULES_LIBRARY_ES : MODULES_LIBRARY; }
+*/
+
+//function t(lang, key) { return (LANG[lang]||LANG.en)[key] || key; }
+//function getModulesLibrary(lang) { return lang==="es" ? MODULES_LIBRARY_ES : MODULES_LIBRARY; }
 
 const AGE_GROUPS = ["U13","U14","U15","U16","U17"];
 const POSITIONS = ["Goalkeeper","Center back","Full back","Defensive mid","Central mid","Attacking mid","Winger","Striker"];
-const POSITIONS_ES = ["Portero","Defensa central","Lateral","Mediocampista defensivo","Mediocampista central","Mediocampista ofensivo","Extremo","Delantero"];
+//const POSITIONS_ES = ["Portero","Defensa central","Lateral","Mediocampista defensivo","Mediocampista central","Mediocampista ofensivo","Extremo","Delantero"];
 
 const DEMO_PLAYERS = [
   { id:"p1", name:"Marcus T.", position:"Goalkeeper", age:"U14", avatar:"MT", avatarColor:C.greenLight, avatarText:C.greenDark },
