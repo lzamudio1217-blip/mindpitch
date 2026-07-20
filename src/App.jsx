@@ -60,71 +60,8 @@ const MODULES_LIBRARY_ES = [
 ];
 
 // ── Language system ────────────────────────────────────────────────────────────
-/* const LANG = {
-  en: {
-    dashboard:"Dashboard", roster:"Roster", builder:"Builder", addPlayer:"Add player",
-    assignModule:"Assign new module", noPlayers:"No players yet",
-    goodMorning:"Good morning, Coach", completionRate:"Completion rate",
-    playersActive:"Players active", modulesAssigned:"Modules assigned",
-    needsAttention:"Needs attention", recentActivity:"Recent activity",
-    startHere:"Start here", generateModule:"Generate module",
-    readyModules:"5 ready-to-assign modules", aiBuilder:"AI builder",
-    describeHint:"e.g. My U14 striker goes quiet when we're losing...",
-    position:"Position", ageGroup:"Age group", theme:"Theme",
-    assignThis:"Assign this module", choosePlayer:"Choose a player",
-    finishTalk:"Finish & talk to coach", nextQuestion:"Next question",
-    aiCoach:"AI coach", myModules:"My modules", language:"Language",
-    coachNote:"Coach note", coachNotePlaceholder:"e.g. Strong positionally, needs to communicate more...",
-    editPlayer:"Edit player", removePlayer:"Remove player",
-    saveChanges:"Save changes", addToRoster:"Add to roster",
-    confirmRemove:"Remove this player?", confirmRemoveBody:"This removes them from your roster and clears their module history. This cannot be undone.",
-    cancel:"Cancel", remove:"Remove",
-    completed:"Completed", assigned:"Assigned", inProgress:"In progress",
-    backToRoster:"Back to roster", overdue:"Overdue", late:"Late",
-    welcomeTitle:"Let's get started", welcomeBody:"Three steps to get your first player working on their mentality.",
-    step1Title:"Add your players", step1Body:"Go to Roster and add the players you want to work with first. Start with 2–3.",
-    step2Title:"Build a module", step2Body:"Describe a player situation in the Builder. The AI generates a personalised module in seconds.",
-    step3Title:"Assign and watch", step3Body:"Assign the module to a player. They complete it on their phone and get an AI debrief.",
-    addFirstPlayer:"Add your first player →",
-    coachView:"Coach view", playerView:"Player view",
-  },
-  es: {
-    dashboard:"Panel", roster:"Plantilla", builder:"Módulos", addPlayer:"Añadir jugador",
-    assignModule:"Asignar módulo", noPlayers:"Sin jugadores",
-    goodMorning:"Buenos días, Entrenador", completionRate:"Tasa de completación",
-    playersActive:"Jugadores activos", modulesAssigned:"Módulos asignados",
-    needsAttention:"Necesita atención", recentActivity:"Actividad reciente",
-    startHere:"Empieza aquí", generateModule:"Generar módulo",
-    readyModules:"5 módulos listos para asignar", aiBuilder:"Constructor IA",
-    describeHint:"Ej. Mi delantero U14 se queda callado cuando vamos perdiendo...",
-    position:"Posición", ageGroup:"Categoría", theme:"Tema",
-    assignThis:"Asignar este módulo", choosePlayer:"Elige un jugador",
-    finishTalk:"Terminar y hablar con el entrenador", nextQuestion:"Siguiente pregunta",
-    aiCoach:"Entrenador IA", myModules:"Mis módulos", language:"Idioma",
-    coachNote:"Nota del entrenador", coachNotePlaceholder:"Ej. Fuerte posicionalmente, necesita comunicar más...",
-    editPlayer:"Editar jugador", removePlayer:"Eliminar jugador",
-    saveChanges:"Guardar cambios", addToRoster:"Añadir a la plantilla",
-    confirmRemove:"¿Eliminar a este jugador?", confirmRemoveBody:"Esto lo elimina de tu plantilla y borra su historial de módulos. No se puede deshacer.",
-    cancel:"Cancelar", remove:"Eliminar",
-    completed:"Completado", assigned:"Asignado", inProgress:"En progreso",
-    backToRoster:"Volver a la plantilla", overdue:"Atrasado", late:"Tarde",
-    welcomeTitle:"Empecemos", welcomeBody:"Tres pasos para que tu primer jugador trabaje su mentalidad.",
-    step1Title:"Añade tus jugadores", step1Body:"Ve a Plantilla y añade los jugadores con los que quieres trabajar primero. Empieza con 2 o 3.",
-    step2Title:"Crea un módulo", step2Body:"Describe la situación de un jugador en el Constructor. La IA genera un módulo personalizado en segundos.",
-    step3Title:"Asigna y observa", step3Body:"Asigna el módulo a un jugador. Lo completa en su teléfono y recibe un debrief con su entrenador IA.",
-    addFirstPlayer:"Añade tu primer jugador →",
-    coachView:"Vista entrenador", playerView:"Vista jugador",
-  }
-};
-
-*/
-
-//function t(lang, key) { return (LANG[lang]||LANG.en)[key] || key; }
-//function getModulesLibrary(lang) { return lang==="es" ? MODULES_LIBRARY_ES : MODULES_LIBRARY; }
-
 const AGE_GROUPS = ["U13","U14","U15","U16","U17"];
 const POSITIONS = ["Goalkeeper","Center back","Full back","Defensive mid","Central mid","Attacking mid","Winger","Striker"];
-//const POSITIONS_ES = ["Portero","Defensa central","Lateral","Mediocampista defensivo","Mediocampista central","Mediocampista ofensivo","Extremo","Delantero"];
 
 const DEMO_PLAYERS = [
   { id:"p1", name:"Marcus T.", position:"Goalkeeper", age:"U14", avatar:"MT", avatarColor:C.greenLight, avatarText:C.greenDark },
@@ -554,7 +491,7 @@ function ModuleDebrief({ player, module: mod, responses, onBack }) {
 function OpenCoachChat({ player, assignments }) {
   const completedModules = assignments
     .filter(a=>a.playerId===player.id && a.status==="completed")
-    .map(a=>{ const m=getModule(a.moduleId); return m?`Completed: ${m.title}`:""; })
+    .map(a=>{ const m=getModule(a.moduleId, player.language||"en") || a.moduleData; return m?`Completed: ${m.title}`:""; })
     .filter(Boolean);
 
   const context = completedModules.length > 0
@@ -598,7 +535,7 @@ function PlayerModuleList({ player, assignments, onStartModule }) {
         <div style={s.section}>
           <div style={s.sectionTitle}>Your modules</div>
           {pending.map(a=>{
-            const mod=getModule(a.moduleId)||a.moduleData; if(!mod)return null;
+            const mod=getModule(a.moduleId, player.language||"en")||a.moduleData; if(!mod)return null;
             const progress=a.responses.filter(Boolean).length; const total=mod.questions?.length||4;
             return (
               <div key={a.id} style={{ ...s.card, borderLeft:`3px solid ${mod.color}` }}>
@@ -623,7 +560,7 @@ function PlayerModuleList({ player, assignments, onStartModule }) {
         <div style={s.section}>
           <div style={s.sectionTitle}>Completed</div>
           {done.map(a=>{
-            const mod=getModule(a.moduleId)||a.moduleData; if(!mod)return null;
+            const mod=getModule(a.moduleId, player.language||"en")||a.moduleData; if(!mod)return null;
             return (
               <div key={a.id} style={{ ...s.card, opacity:0.75 }}>
                 <div style={s.cardPad}>
@@ -743,14 +680,14 @@ function CoachDashboard({ players, assignments, onNav, onViewPlayer }) {
         <div style={s.sectionTitle}>Needs attention</div>
         <div style={s.card}>
           {needsAttention.length===0?(<div style={{ ...s.cardPad, ...s.muted }}>All players are up to date.</div>)
-          :needsAttention.map((a,i)=>{ const player=getPlayer(a.playerId,players); const mod=getModule(a.moduleId); if(!player||!mod)return null; return (
+          :needsAttention.map((a,i)=>{ const player=getPlayer(a.playerId,players); const mod=getModule(a.moduleId, player?.language||"en") || a.moduleData; if(!player||!mod)return null; return (
             <div key={a.id}>
               {i>0&&<div style={s.divider}/>}
               <div style={{ ...s.cardPad, cursor:"pointer" }} onClick={()=>onViewPlayer(player)}>
                 <div style={{ ...s.row, marginBottom:6 }}>
                   <Avatar player={player}/>
                   <div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:14, color:C.navy }}>{player.name}</div><div style={s.muted}>{mod.title}</div></div>
-                  <span style={s.badge(a.status==="in-progress"?C.amberLight:C.grayLight, a.status==="in-progress"?"#633806":C.gray)}>{statusLabel(a.status)}</span>
+                  <span style={s.badge(a.status==="in-progress"?C.amberLight:C.grayLight, a.status==="in-progress"?"#633806":C.gray)}>{statusLabel(a.status, player?.language||"en")}</span>
                 </div>
                 <ProgressBar value={a.responses.filter(Boolean).length/(mod.questions.length)*100} color={a.status==="in-progress"?C.amber:C.grayMid}/>
               </div>
@@ -761,14 +698,14 @@ function CoachDashboard({ players, assignments, onNav, onViewPlayer }) {
       <div style={s.section}>
         <div style={s.sectionTitle}>Recent activity</div>
         <div style={s.card}>
-          {recent.map((a,i)=>{ const player=getPlayer(a.playerId,players); const mod=getModule(a.moduleId); if(!player||!mod)return null; return (
+          {recent.map((a,i)=>{ const player=getPlayer(a.playerId,players); const mod=getModule(a.moduleId, player?.language||"en") || a.moduleData; if(!player||!mod)return null; return (
             <div key={a.id}>
               {i>0&&<div style={s.divider}/>}
               <div style={s.cardPad}>
                 <div style={s.row}>
                   <div style={s.statusDot(statusColor(a.status))}/>
                   <div style={{ flex:1 }}><div style={{ fontSize:13, color:C.text }}><strong>{player.name}</strong> — {mod.title}</div><div style={{ fontSize:12, color:C.textMuted }}>{a.assignedAt}</div></div>
-                  <span style={s.badge(a.status==="completed"?C.greenLight:a.status==="in-progress"?C.amberLight:C.grayLight, statusColor(a.status))}>{statusLabel(a.status)}</span>
+                  <span style={s.badge(a.status==="completed"?C.greenLight:a.status==="in-progress"?C.amberLight:C.grayLight, statusColor(a.status))}>{statusLabel(a.status, player?.language||"en")}</span>
                 </div>
               </div>
             </div>
@@ -842,7 +779,7 @@ function CoachSummary({ players, assignments }) {
         <div style={{ ...s.sectionTitle, marginBottom:10 }}>Completed</div>
         {completed.map((a,i)=>{
           const player = getPlayer(a.playerId, players);
-          const mod = getModule(a.moduleId) || a.moduleData;
+          const mod = getModule(a.moduleId, player?.language||"en") || a.moduleData;
           if (!player||!mod) return null;
           const isOpen = expanded === a.id;
           const insight = getAiInsight(mod, player, a.responses||[]);
@@ -915,7 +852,7 @@ function CoachSummary({ players, assignments }) {
       {pending.length > 0 && <>
         <div style={{ ...s.sectionTitle, marginTop:8, marginBottom:10 }}>Pending</div>
         <div style={s.card}>
-          {pending.map((a,i)=>{ const player=getPlayer(a.playerId,players); const mod=getModule(a.moduleId)||a.moduleData; if(!player||!mod)return null; return (
+          {pending.map((a,i)=>{ const player=getPlayer(a.playerId,players); const mod=getModule(a.moduleId, player?.language||"en")||a.moduleData; if(!player||!mod)return null; return (
             <div key={a.id}>
               {i>0&&<div style={s.divider}/>}
               <div style={{ ...s.cardPad }}>
@@ -925,7 +862,7 @@ function CoachSummary({ players, assignments }) {
                     <div style={{ fontWeight:600, fontSize:14, color:C.navy }}>{player.name}</div>
                     <div style={s.muted}>{mod.title} · assigned {a.assignedAt}</div>
                   </div>
-                  <span style={s.badge(a.status==="in-progress"?C.amberLight:C.grayLight, a.status==="in-progress"?C.amber:C.gray)}>{statusLabel(a.status)}</span>
+                  <span style={s.badge(a.status==="in-progress"?C.amberLight:C.grayLight, a.status==="in-progress"?C.amber:C.gray)}>{statusLabel(a.status, player?.language||"en")}</span>
                 </div>
               </div>
             </div>
@@ -977,7 +914,7 @@ function CoachRoster({ players, assignments, onViewPlayer, onAddPlayer }) {
         <button style={{ ...s.btn(C.green,C.white), marginLeft:"auto" }} onClick={onAddPlayer}><Icon name="plus" size={16} color={C.white}/></button>
       </div>
       <div style={s.card}>
-        {players.map((player,i)=>{ const pa=assignments.filter(a=>a.playerId===player.id); const latest=pa.sort((a,b)=>new Date(b.assignedAt)-new Date(a.assignedAt))[0]; const mod = latest ? (getModule(latest.moduleId) || latest.moduleData) : null; const done=pa.filter(a=>a.status==="completed").length; return (
+        {players.map((player,i)=>{ const pa=assignments.filter(a=>a.playerId===player.id); const latest=pa.sort((a,b)=>new Date(b.assignedAt)-new Date(a.assignedAt))[0]; const mod = latest ? (getModule(latest.moduleId, player.language||"en") || latest.moduleData) : null; const done=pa.filter(a=>a.status==="completed").length; return (
           <div key={player.id}>
             {i>0&&<div style={s.divider}/>}
             <div style={{ ...s.cardPad, cursor:"pointer" }} onClick={()=>onViewPlayer(player)}>
@@ -1035,12 +972,12 @@ function PlayerDetail({ player, assignments, onBack, onAssignModule, onEdit, onR
       {pa.length>0&&(
         <div style={{ marginTop:20 }}>
           <div style={s.sectionTitle}>Module history</div>
-          {pa.map(a=>{ const mod = getModule(a.moduleId) || a.moduleData; if(!mod)return null; return (
+          {pa.map(a=>{ const mod = getModule(a.moduleId, player.language||"en") || a.moduleData; if(!mod)return null; return (
             <div key={a.id} style={{ ...s.card, borderLeft:`3px solid ${mod.color}` }}>
               <div style={s.cardPad}>
                 <div style={{ ...s.row, marginBottom:8 }}>
                   <div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:14, color:C.navy }}>{mod.title}</div><div style={{ fontSize:12, color:C.textMuted }}>Assigned {a.assignedAt}</div></div>
-                  <span style={s.badge(a.status==="completed"?C.greenLight:a.status==="in-progress"?C.amberLight:C.grayLight, statusColor(a.status))}>{statusLabel(a.status)}</span>
+                  <span style={s.badge(a.status==="completed"?C.greenLight:a.status==="in-progress"?C.amberLight:C.grayLight, statusColor(a.status))}>{statusLabel(a.status, player?.language||"en")}</span>
                 </div>
                 {a.responses.filter(Boolean).length>0&&(
                   <div style={{ background:C.offwhite, borderRadius:8, padding:"10px 12px" }}>
@@ -1223,17 +1160,7 @@ function ModuleBuilder({ players, savedModules, onSaveModule, onDeleteModule, on
 function AddPlayerModal({ onAdd, onClose }) {
   const [name,setName]=useState(""); const [position,setPosition]=useState("Center back"); const [age,setAge]=useState("U14"); const [coachNote,setCoachNote]=useState(""); const [language,setLanguage]=useState("en");
   const colors=[{bg:C.greenLight,text:C.greenDark},{bg:C.blueLight,text:"#0C447C"},{bg:C.amberLight,text:"#633806"},{bg:C.purpleLight,text:"#3C3489"},{bg:C.coralLight,text:"#712B13"}];
-  function add(){ if(!name.trim())return; const initials=name.trim().split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); const c=colors[Math.floor(Math.random()*colors.length)]; onAdd({
-      id: crypto.randomUUID ? crypto.randomUUID() : "p-" + Date.now(),
-      name: name.trim(),
-      position,
-      age,
-      avatar: initials,
-      avatarColor: c.bg,
-      avatarText: c.text,
-      coachNote: coachNote.trim(),
-      language
-    }); }
+  function add(){ if(!name.trim())return; const initials=name.trim().split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); const c=colors[Math.floor(Math.random()*colors.length)]; onAdd({ id:crypto.randomUUID ? crypto.randomUUID() : "p-"+Date.now(), name:name.trim(), position, age, avatar:initials, avatarColor:c.bg, avatarText:c.text, coachNote:coachNote.trim(), language }); }
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:200, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
       <div style={{ background:C.white, borderRadius:"16px 16px 0 0", padding:20, width:"100%", maxWidth:480 }}>
@@ -1337,13 +1264,9 @@ export default function App() {
   }
   useEffect(()=>{ loadStorage(); },[]);
   function addPlayer(p){ const u=[...players,p]; setPlayers(u); saveStorage(u,assignments); setShowAddPlayer(false); }
-  function editPlayer(updated){ const u=players.map(p=>p.id===updated.id?updated:p); setPlayers(u); saveStorage(u,assignments); setEditingPlayer(null); setSelectedPlayer(updated); if(viewingAs.id===updated.id)setViewingAs(updated); }
-  function removePlayer(player){ const u=players.filter(p=>p.id!==player.id); const ua=assignments.filter(a=>a.playerId!==player.id); setPlayers(u); setAssignments(ua); saveStorage(u,ua); setSelectedPlayer(null); if(viewingAs.id===player.id&&u.length)setViewingAs(u[0]); }
-  function addAssignment(a){
-    const u = [...assignments, a];
-    setAssignments(u);
-    saveStorage(players, u);
-  }
+  function editPlayer(updated){ const u=players.map(p=>p.id===updated.id?updated:p); setPlayers(u); saveStorage(u,assignments); setEditingPlayer(null); setSelectedPlayer(updated); if(viewingAs?.id===updated.id)setViewingAs(updated); }
+  function removePlayer(player){ const u=players.filter(p=>p.id!==player.id); const ua=assignments.filter(a=>a.playerId!==player.id); setPlayers(u); setAssignments(ua); saveStorage(u,ua); setSelectedPlayer(null); if(viewingAs?.id===player.id&&u.length)setViewingAs(u[0]); }
+  function addAssignment(a){ const u=[...assignments,a]; setAssignments(u); saveStorage(players,u); }
   function updateAssignment(updated){ const all=assignments.map(a=>a.id===updated.id?updated:a); setAssignments(all); saveStorage(players,all); }
   function saveModule(mod){ const withId={ ...mod, id:"saved-"+Date.now(), savedAt:new Date().toISOString().split("T")[0] }; const u=[withId,...savedModules]; setSavedModules(u); saveStorage(players,assignments,u); return withId; }
   function deleteModule(id){ const u=savedModules.filter(m=>m.id!==id); setSavedModules(u); saveStorage(players,assignments,u); }
@@ -1383,11 +1306,11 @@ export default function App() {
           ):(
             <>
               <div style={{ ...s.tabBar, top:57, bottom:"auto", borderBottom:`1px solid ${C.grayMid}30`, borderTop:"none" }}>
-                <div style={{display:"flex", gap:16, overflowX:"auto", padding:"14px 12px", background:C.white, WebkitOverflowScrolling:"touch"}}>
+                <div style={{ display:"flex", width:"100%", padding:"4px 8px", gap:12, overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
                   {players.map(p=>(
-                    <div key={p.id} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3, cursor:"pointer", padding:"6px 0" }} onClick={()=>setViewingAs(p)}>
-                      <div style={{ ...s.avatar(p.avatarColor,p.avatarText,viewingAs.id===p.id?32:28), border:viewingAs.id===p.id?`2px solid ${C.green}`:"none" }}>{p.avatar}</div>
-                      <span style={{ fontSize:9, color:viewingAs.id===p.id?C.green:C.gray, fontWeight:viewingAs.id===p.id?600:400 }}>{p.name.split(" ")[0]}</span>
+                    <div key={p.id} style={{ minWidth:64, flex:"0 0 auto", display:"flex", flexDirection:"column", alignItems:"center", gap:3, cursor:"pointer", padding:"6px 0" }} onClick={()=>setViewingAs(p)}>
+                      <div style={{ ...s.avatar(p.avatarColor,p.avatarText,viewingAs?.id===p.id?32:28), border:viewingAs?.id===p.id?`2px solid ${C.green}`:"none" }}>{p.avatar}</div>
+                      <span style={{ fontSize:9, color:viewingAs?.id===p.id?C.green:C.gray, fontWeight:viewingAs?.id===p.id?600:400 }}>{p.name.split(" ")[0]}</span>
                     </div>
                   ))}
                 </div>

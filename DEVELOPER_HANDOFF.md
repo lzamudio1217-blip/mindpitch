@@ -71,7 +71,7 @@ cp .env.example .env
 ```
 Open `.env` and add:
 ```
-REACT_APP_ANTHROPIC_API_KEY=sk-ant-your-key-here
+ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
 ### 4. Run locally
@@ -100,12 +100,12 @@ When prompted:
 - Project name: `mindpitch`
 - Build command: `npm run build`
 - Output directory: `build`
-- Add env variable: `REACT_APP_ANTHROPIC_API_KEY`
+- Add env variable: `ANTHROPIC_API_KEY`
 
 ### Option B — GitHub + Vercel dashboard
 1. Push to a new GitHub repo
 2. Go to vercel.com → New Project → Import from GitHub
-3. Add environment variable: `REACT_APP_ANTHROPIC_API_KEY`
+3. Add environment variable: `ANTHROPIC_API_KEY`
 4. Click Deploy
 
 You'll get a live URL like `mindpitch.vercel.app` instantly.  

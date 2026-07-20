@@ -40,7 +40,7 @@ The AI module builder calls the Anthropic API directly from the browser.
 3. Add your key:
 
 ```
-REACT_APP_ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
 ```
 
 **Security note:** For production, you should proxy API calls through a serverless function
@@ -57,7 +57,7 @@ Fastest method (no CLI needed):
 2. Go to https://vercel.com → New Project → Import that repo
 3. Framework preset: **Create React App**
 4. Add environment variable:
-   - Key: `REACT_APP_ANTHROPIC_API_KEY`
+   - Key: `ANTHROPIC_API_KEY`
    - Value: your Anthropic API key
 5. Click Deploy
 
