@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { supabase, isSupabaseConfigured } from "./supabaseClient";
 
 const C = {
   navy: "#0D1B2A", navyMid: "#1A2E42", navyLight: "#243447",
@@ -63,21 +64,6 @@ const MODULES_LIBRARY_ES = [
 const AGE_GROUPS = ["U13","U14","U15","U16","U17"];
 const POSITIONS = ["Goalkeeper","Center back","Full back","Defensive mid","Central mid","Attacking mid","Winger","Striker"];
 
-const DEMO_PLAYERS = [
-  { id:"p1", name:"Marcus T.", position:"Goalkeeper", age:"U14", avatar:"MT", avatarColor:C.greenLight, avatarText:C.greenDark },
-  { id:"p2", name:"Jake M.", position:"Striker", age:"U14", avatar:"JM", avatarColor:C.blueLight, avatarText:"#0C447C" },
-  { id:"p3", name:"Dylan K.", position:"Center back", age:"U14", avatar:"DK", avatarColor:C.amberLight, avatarText:"#633806" },
-  { id:"p4", name:"Sofia R.", position:"Central mid", age:"U14", avatar:"SR", avatarColor:C.purpleLight, avatarText:"#3C3489" },
-  { id:"p5", name:"Aiden L.", position:"Central mid", age:"U14", avatar:"AL", avatarColor:C.coralLight, avatarText:"#712B13" },
-];
-
-const DEMO_ASSIGNMENTS = [
-  { id:"a1", playerId:"p1", moduleId:"mistake-recovery", assignedAt:"2026-06-01", status:"completed", responses:["I feel it in my chest and stomach, like everything tightens up.","I'd tell a teammate it's fine and to move on. I never say that to myself though.","Manuel Neuer — he just walks back to his post, no drama. Looks like it didn't happen.","I'd call the line louder and be first to the next cross."], completedAt:"2026-06-03" },
-  { id:"a2", playerId:"p2", moduleId:"confidence-slump", assignedAt:"2026-06-03", status:"in-progress", responses:["Tournament last month — I just played, didn't think about it. Got two assists.","Trying not to fail. I know that's it.","",""], completedAt:null },
-  { id:"a3", playerId:"p3", moduleId:"new-player", assignedAt:"2026-06-05", status:"assigned", responses:[], completedAt:null },
-  { id:"a4", playerId:"p4", moduleId:"bench-mentality", assignedAt:"2026-05-28", status:"completed", responses:["I can see the shape better — the left side kept getting exposed.","Honestly my body language was bad. I felt it pulling the team down.","I started tracking the right back and showed the coach after.","She'd be the first one up cheering and the loudest voice when she came on."], completedAt:"2026-05-30" },
-];
-
 const s = {
   app:{ fontFamily:"'Inter',-apple-system,sans-serif", background:C.offwhite, minHeight:"100vh", maxWidth:480, margin:"0 auto", position:"relative" },
   navBar:{ background:C.navy, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100 },
@@ -119,6 +105,77 @@ function statusLabel(s,lang){ if(lang==="es") return s==="completed"?"Completado
 function getModule(id, lang="en"){ const lib = lang==="es" ? MODULES_LIBRARY_ES : MODULES_LIBRARY; return lib.find(m=>m.id===id); }
 function getPlayer(id,players){ return players.find(p=>p.id===id); }
 function completionRate(assignments){ if(!assignments.length)return 0; return Math.round(assignments.filter(a=>a.status==="completed").length/assignments.length*100); }
+
+
+function dbPlayerToApp(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    position: row.position,
+    age: row.age,
+    avatar: row.avatar,
+    avatarColor: row.avatar_color,
+    avatarText: row.avatar_text,
+    coachNote: row.coach_note || "",
+    language: row.language || "en",
+  };
+}
+
+function appPlayerToDb(player, coachId) {
+  return {
+    ...(player.id && /^[0-9a-f-]{36}$/i.test(player.id) ? { id: player.id } : {}),
+    coach_id: coachId,
+    name: player.name,
+    position: player.position,
+    age: player.age,
+    avatar: player.avatar,
+    avatar_color: player.avatarColor,
+    avatar_text: player.avatarText,
+    coach_note: player.coachNote || "",
+    language: player.language || "en",
+  };
+}
+
+function dbAssignmentToApp(row) {
+  return {
+    id: row.id,
+    playerId: row.player_id,
+    moduleId: row.module_id,
+    moduleData: row.module_data,
+    assignedAt: row.assigned_at,
+    status: row.status,
+    responses: row.responses || [],
+    completedAt: row.completed_at,
+  };
+}
+
+function appAssignmentToDb(assignment, coachId) {
+  return {
+    coach_id: coachId,
+    player_id: assignment.playerId,
+    module_id: assignment.moduleId,
+    module_data: assignment.moduleData,
+    assigned_at: assignment.assignedAt,
+    status: assignment.status || "assigned",
+    responses: assignment.responses || [],
+    completed_at: assignment.completedAt || null,
+  };
+}
+
+function dbSavedModuleToApp(row) {
+  const raw = row.raw_module || {};
+  return {
+    ...raw,
+    id: row.id,
+    title: raw.title || row.title,
+    situation: raw.situation || row.situation,
+    questions: raw.questions || row.questions || [],
+    habit: raw.habit || row.habit,
+    coachNote: raw.coachNote || row.coach_note || "",
+    savedAt: row.created_at ? row.created_at.split("T")[0] : raw.savedAt,
+  };
+}
+
 
 // ── Soccer IQ briefs — position-specific tactical context for AI coaching ──────
 const SOCCER_IQ = {
@@ -267,6 +324,74 @@ function ProgressBar({ value, color=C.green, height=4 }) {
 
 function Avatar({ player, size=36 }) {
   return <div style={s.avatar(player.avatarColor, player.avatarText, size)}>{player.avatar}</div>;
+}
+
+function AuthScreen() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function sendMagicLink(e) {
+    e.preventDefault();
+    if (!email.trim() || !supabase) return;
+
+    setLoading(true);
+    setError("");
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    setSent(true);
+  }
+
+  return (
+    <div style={s.app}>
+      <div style={s.navBar}>
+        <div style={s.logo}><div style={s.logoDot}/>MindPitch</div>
+      </div>
+      <div style={{ ...s.screen, minHeight:"75vh", display:"flex", alignItems:"center" }}>
+        <div style={{ ...s.card, width:"100%" }}>
+          <div style={{ ...s.cardPad, padding:"24px 20px" }}>
+            <div style={{ ...s.label, marginBottom:8 }}>Coach login</div>
+            <div style={{ ...s.h1, marginBottom:8 }}>Sign in to MindPitch</div>
+            <div style={{ ...s.muted, marginBottom:18 }}>Enter your email and we'll send you a secure magic link. No password needed.</div>
+            {sent ? (
+              <div style={{ background:C.greenLight, border:`1px solid ${C.green}40`, borderRadius:10, padding:"12px 14px", color:C.greenDark, fontSize:13, lineHeight:1.5 }}>
+                Check your email for the login link. Open it on this same browser to finish signing in.
+              </div>
+            ) : (
+              <form onSubmit={sendMagicLink}>
+                <input
+                  style={s.input}
+                  type="email"
+                  placeholder="coach@example.com"
+                  value={email}
+                  onChange={e=>setEmail(e.target.value)}
+                  autoFocus
+                />
+                {error&&<div style={{ fontSize:13, color:C.coral, marginBottom:10 }}>{error}</div>}
+                <button style={s.btn(C.green,C.white,true)} disabled={loading || !email.trim()} type="submit">
+                  {loading ? "Sending..." : "Send magic link"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── AI Chat Component (reused for both debrief and open chat) ─────────────────
@@ -1016,9 +1141,9 @@ function ModuleBuilder({ players, savedModules, onSaveModule, onDeleteModule, on
     setAiLoading(false);
   }
 
-  function handleSave(mod){ onSaveModule(mod); setJustSaved(true); }
+  async function handleSave(mod){ await onSaveModule(mod); setJustSaved(true); }
 
-  function doAssign(module, playerToAssign = selectedPlayer) {
+  async function doAssign(module, playerToAssign = selectedPlayer) {
     if (!playerToAssign) {
       setSelectedModule(module);
       return;
@@ -1026,19 +1151,24 @@ function ModuleBuilder({ players, savedModules, onSaveModule, onDeleteModule, on
 
     const today = new Date().toISOString().split("T")[0];
 
-    onAssigned({
-      id: "a-" + Date.now(),
-      playerId: playerToAssign.id,
-      moduleId: module.id || "ai-custom",
-      moduleData: module,
-      assignedAt: today,
-      status: "assigned",
-      responses: [],
-      completedAt: null
-    });
+    try {
+      await onAssigned({
+        id: "a-" + Date.now(),
+        playerId: playerToAssign.id,
+        moduleId: module.id || "ai-custom",
+        moduleData: module,
+        assignedAt: today,
+        status: "assigned",
+        responses: [],
+        completedAt: null
+      });
 
-    setSelectedPlayer(playerToAssign);
-    setAssigned(true);
+      setSelectedPlayer(playerToAssign);
+      setAssigned(true);
+    } catch (error) {
+      console.error("Assignment failed", error);
+      alert("Could not assign this module. Please try again.");
+    }
   }
 
   if(assigned) return (
@@ -1212,14 +1342,17 @@ export default function App() {
   const [role,setRole]=useState("coach");
   const [coachTab,setCoachTab]=useState("dashboard");
   const [playerTab,setPlayerTab]=useState("modules");
-  const [players,setPlayers]=useState(DEMO_PLAYERS);
-  const [assignments,setAssignments]=useState(DEMO_ASSIGNMENTS);
+  const [players,setPlayers]=useState([]);
+  const [assignments,setAssignments]=useState([]);
   const [selectedPlayer,setSelectedPlayer]=useState(null);
   const [activeModule,setActiveModule]=useState(null);
   const [showAddPlayer,setShowAddPlayer]=useState(false);
   const [editingPlayer,setEditingPlayer]=useState(null);
-  const [viewingAs,setViewingAs]=useState(DEMO_PLAYERS[0]);
+  const [viewingAs,setViewingAs]=useState(null);
   const [savedModules,setSavedModules]=useState([]);
+  const [session,setSession]=useState(null);
+  const [authLoading,setAuthLoading]=useState(isSupabaseConfigured);
+  const [dataLoading,setDataLoading]=useState(false);
 
   async function loadStorage(){
     try {
@@ -1262,25 +1395,299 @@ export default function App() {
       console.error("Storage save failed", e);
     }
   }
-  useEffect(()=>{ loadStorage(); },[]);
-  function addPlayer(p){ const u=[...players,p]; setPlayers(u); saveStorage(u,assignments); setShowAddPlayer(false); }
-  function editPlayer(updated){ const u=players.map(p=>p.id===updated.id?updated:p); setPlayers(u); saveStorage(u,assignments); setEditingPlayer(null); setSelectedPlayer(updated); if(viewingAs?.id===updated.id)setViewingAs(updated); }
-  function removePlayer(player){ const u=players.filter(p=>p.id!==player.id); const ua=assignments.filter(a=>a.playerId!==player.id); setPlayers(u); setAssignments(ua); saveStorage(u,ua); setSelectedPlayer(null); if(viewingAs?.id===player.id&&u.length)setViewingAs(u[0]); }
-  function addAssignment(a){ const u=[...assignments,a]; setAssignments(u); saveStorage(players,u); }
-  function updateAssignment(updated){ const all=assignments.map(a=>a.id===updated.id?updated:a); setAssignments(all); saveStorage(players,all); }
-  function saveModule(mod){ const withId={ ...mod, id:"saved-"+Date.now(), savedAt:new Date().toISOString().split("T")[0] }; const u=[withId,...savedModules]; setSavedModules(u); saveStorage(players,assignments,u); return withId; }
-  function deleteModule(id){ const u=savedModules.filter(m=>m.id!==id); setSavedModules(u); saveStorage(players,assignments,u); }
+
+  async function loadCloudData(userId) {
+    if (!supabase || !userId) return;
+    setDataLoading(true);
+    try {
+      const [playersRes, assignmentsRes, modulesRes] = await Promise.all([
+        supabase.from("players").select("*").eq("coach_id", userId).order("created_at", { ascending:true }),
+        supabase.from("assignments").select("*").eq("coach_id", userId).order("created_at", { ascending:true }),
+        supabase.from("ai_modules").select("*").eq("coach_id", userId).order("created_at", { ascending:false }),
+      ]);
+
+      if (playersRes.error) throw playersRes.error;
+      if (assignmentsRes.error) throw assignmentsRes.error;
+      if (modulesRes.error) throw modulesRes.error;
+
+      const loadedPlayers = (playersRes.data || []).map(dbPlayerToApp);
+      const loadedAssignments = (assignmentsRes.data || []).map(dbAssignmentToApp);
+      const loadedModules = (modulesRes.data || []).map(dbSavedModuleToApp);
+
+      setPlayers(loadedPlayers);
+      setAssignments(loadedAssignments);
+      setSavedModules(loadedModules);
+      setSelectedPlayer(null);
+      setActiveModule(null);
+      setViewingAs(current => loadedPlayers.find(p=>p.id===current?.id) || loadedPlayers[0] || null);
+    } catch (error) {
+      console.error("Supabase load failed", error);
+      alert("Could not load MindPitch data from Supabase. Check the console and Supabase settings.");
+    } finally {
+      setDataLoading(false);
+    }
+  }
+
+  async function ensureCoachProfile(user) {
+    if (!supabase || !user) return;
+    const { error } = await supabase.from("coach_profiles").upsert({
+      id: user.id,
+      email: user.email,
+    });
+    if (error) console.error("Coach profile upsert failed", error);
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(()=>{
+    if (!isSupabaseConfigured || !supabase) {
+      setAuthLoading(false);
+      loadStorage();
+      return;
+    }
+
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session || null);
+      setAuthLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession || null);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription?.unsubscribe();
+    };
+  },[]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(()=>{
+    if (!isSupabaseConfigured || !supabase) return;
+    if (session?.user) {
+      ensureCoachProfile(session.user);
+      loadCloudData(session.user.id);
+    } else {
+      setPlayers([]);
+      setAssignments([]);
+      setSavedModules([]);
+      setSelectedPlayer(null);
+      setViewingAs(null);
+      setActiveModule(null);
+    }
+  },[session]);
+
+  useEffect(() => {
+    if (players.length === 0) {
+      setViewingAs(null);
+    } else if (!viewingAs || !players.some(p => p.id === viewingAs.id)) {
+      setViewingAs(players[0]);
+    }
+  }, [players, viewingAs]);
+
+  async function addPlayer(p){
+    if (supabase && session?.user) {
+      const { data, error } = await supabase
+        .from("players")
+        .insert(appPlayerToDb(p, session.user.id))
+        .select()
+        .single();
+      if (error) throw error;
+      const saved = dbPlayerToApp(data);
+      setPlayers(prev => [...prev, saved]);
+      setShowAddPlayer(false);
+      return saved;
+    }
+
+    const u=[...players,p];
+    setPlayers(u);
+    saveStorage(u,assignments);
+    setShowAddPlayer(false);
+    return p;
+  }
+
+  async function editPlayer(updated){
+    if (supabase && session?.user) {
+      const { data, error } = await supabase
+        .from("players")
+        .update(appPlayerToDb(updated, session.user.id))
+        .eq("id", updated.id)
+        .eq("coach_id", session.user.id)
+        .select()
+        .single();
+      if (error) throw error;
+      const saved = dbPlayerToApp(data);
+      setPlayers(prev => prev.map(p=>p.id===saved.id?saved:p));
+      setEditingPlayer(null);
+      setSelectedPlayer(saved);
+      if(viewingAs?.id===saved.id)setViewingAs(saved);
+      return saved;
+    }
+
+    const u=players.map(p=>p.id===updated.id?updated:p);
+    setPlayers(u);
+    saveStorage(u,assignments);
+    setEditingPlayer(null);
+    setSelectedPlayer(updated);
+    if(viewingAs?.id===updated.id)setViewingAs(updated);
+    return updated;
+  }
+
+  async function removePlayer(player){
+    if (supabase && session?.user) {
+      const { error } = await supabase
+        .from("players")
+        .delete()
+        .eq("id", player.id)
+        .eq("coach_id", session.user.id);
+      if (error) throw error;
+      setPlayers(prev => {
+        const next = prev.filter(p=>p.id!==player.id);
+        if(viewingAs?.id===player.id)setViewingAs(next[0] || null);
+        return next;
+      });
+      setAssignments(prev => prev.filter(a=>a.playerId!==player.id));
+      setSelectedPlayer(null);
+      return;
+    }
+
+    const u=players.filter(p=>p.id!==player.id);
+    const ua=assignments.filter(a=>a.playerId!==player.id);
+    setPlayers(u);
+    setAssignments(ua);
+    saveStorage(u,ua);
+    setSelectedPlayer(null);
+    if(viewingAs?.id===player.id&&u.length)setViewingAs(u[0]);
+  }
+
+  async function addAssignment(a){
+    if (supabase && session?.user) {
+      const { data, error } = await supabase
+        .from("assignments")
+        .insert(appAssignmentToDb(a, session.user.id))
+        .select()
+        .single();
+      if (error) throw error;
+      const saved = dbAssignmentToApp(data);
+      setAssignments(prev => [...prev, saved]);
+      return saved;
+    }
+
+    const u=[...assignments,a];
+    setAssignments(u);
+    saveStorage(players,u);
+    return a;
+  }
+
+  async function updateAssignment(updated){
+    if (supabase && session?.user) {
+      const { data, error } = await supabase
+        .from("assignments")
+        .update(appAssignmentToDb(updated, session.user.id))
+        .eq("id", updated.id)
+        .eq("coach_id", session.user.id)
+        .select()
+        .single();
+      if (error) throw error;
+      const saved = dbAssignmentToApp(data);
+      setAssignments(prev => prev.map(a=>a.id===saved.id?saved:a));
+      return saved;
+    }
+
+    const all=assignments.map(a=>a.id===updated.id?updated:a);
+    setAssignments(all);
+    saveStorage(players,all);
+    return updated;
+  }
+
+  async function saveModule(mod){
+    const withId={ ...mod, id:mod.id || "saved-"+Date.now(), savedAt:new Date().toISOString().split("T")[0] };
+
+    if (supabase && session?.user) {
+      const { data, error } = await supabase
+        .from("ai_modules")
+        .insert({
+          coach_id: session.user.id,
+          title: withId.title,
+          situation: withId.situation,
+          questions: withId.questions || [],
+          habit: typeof withId.habit === "string" ? withId.habit : withId.habit?.title || null,
+          coach_note: withId.coachNote || withId.coach_note || null,
+          raw_module: withId,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      const saved = dbSavedModuleToApp(data);
+      setSavedModules(prev => [saved,...prev]);
+      return saved;
+    }
+
+    const u=[withId,...savedModules];
+    setSavedModules(u);
+    saveStorage(players,assignments,u);
+    return withId;
+  }
+
+  async function deleteModule(id){
+    if (supabase && session?.user) {
+      const { error } = await supabase
+        .from("ai_modules")
+        .delete()
+        .eq("id", id)
+        .eq("coach_id", session.user.id);
+      if (error) throw error;
+      setSavedModules(prev => prev.filter(m=>m.id!==id));
+      return;
+    }
+
+    const u=savedModules.filter(m=>m.id!==id);
+    setSavedModules(u);
+    saveStorage(players,assignments,u);
+  }
+
+  async function signOut(){
+    if (supabase) await supabase.auth.signOut();
+  }
 
   const isCoach=role==="coach";
+
+  if (authLoading) {
+    return (
+      <div style={s.app}>
+        <div style={s.navBar}><div style={s.logo}><div style={s.logoDot}/>MindPitch</div></div>
+        <div style={{ ...s.screen, textAlign:"center", paddingTop:80 }}>
+          <div style={{ ...s.muted }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSupabaseConfigured && !session) {
+    return <AuthScreen />;
+  }
 
   return (
     <div style={s.app}>
       <div style={s.navBar}>
         <div style={s.logo}><div style={s.logoDot}/>MindPitch</div>
-        <button style={s.navRole} onClick={()=>{ setRole(isCoach?"player":"coach"); setCoachTab("dashboard"); setPlayerTab("modules"); setSelectedPlayer(null); setActiveModule(null); }}>
-          {isCoach?"Coach view":"Player view"} ↕
-        </button>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <button style={s.navRole} onClick={()=>{ setRole(isCoach?"player":"coach"); setCoachTab("dashboard"); setPlayerTab("modules"); setSelectedPlayer(null); setActiveModule(null); }}>
+            {isCoach?"Coach view":"Player view"} ↕
+          </button>
+          {isSupabaseConfigured&&session&&(
+            <button style={s.navRole} onClick={signOut}>Sign out</button>
+          )}
+        </div>
       </div>
+      {dataLoading&&(
+        <div style={{ position:"fixed", top:57, left:"50%", transform:"translateX(-50%)", maxWidth:480, width:"100%", background:C.greenLight, color:C.greenDark, fontSize:12, textAlign:"center", padding:"6px 0", zIndex:120 }}>
+          Syncing roster...
+        </div>
+      )}
 
       {isCoach&&(
         <>
@@ -1316,7 +1723,16 @@ export default function App() {
                 </div>
               </div>
               <div style={{ paddingTop:60 }}>
-                {playerTab==="modules"?(
+                {!viewingAs ? (
+                  <div style={s.screen}>
+                    <div style={s.card}>
+                      <div style={{ ...s.cardPad, textAlign:"center", padding:"28px 18px" }}>
+                        <div style={{ ...s.h2, marginBottom:8 }}>No players yet</div>
+                        <div style={s.muted}>Add players from Coach view → Roster before using Player view.</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : playerTab==="modules"?(
                   <PlayerModuleList player={viewingAs} assignments={assignments} onStartModule={(a,mod)=>setActiveModule({ assignment:a, module:mod })}/>
                 ):(
                   <OpenCoachChat player={viewingAs} assignments={assignments}/>
