@@ -59,3 +59,16 @@ http://localhost:3000/**
 10. Complete the module in Player view.
 11. Refresh and confirm completed status persists.
 12. Open a second browser/device, sign in with the same coach email, and confirm the same data appears.
+
+
+## Additional schema update for MindPitch #12
+
+Run this in Supabase SQL Editor before deploying this merged version:
+
+```sql
+alter table public.players
+add column if not exists coach_note text,
+add column if not exists player_email text;
+```
+
+`player_email` stores the optional player email field added in MindPitch #12.

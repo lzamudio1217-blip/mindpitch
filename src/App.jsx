@@ -88,6 +88,7 @@ const s = {
   tabLabel:(active)=>({ fontSize:10, fontWeight:active?600:400, color:active?C.green:C.gray }),
   avatar:(bg,text,size=36)=>({ width:size, height:size, borderRadius:"50%", background:bg, color:text, display:"flex", alignItems:"center", justifyContent:size>40?"center":"center", fontSize:size>40?15:12, fontWeight:600, flexShrink:0 }),
   row:{ display:"flex", alignItems:"center", gap:10 },
+  rowSB:{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 },
   divider:{ height:"0.5px", background:`${C.grayMid}40`, margin:"0 16px" },
   statusDot:(color)=>({ width:8, height:8, borderRadius:"50%", background:color, flexShrink:0 }),
   metricGrid:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:16 },
@@ -118,6 +119,7 @@ function dbPlayerToApp(row) {
     avatarText: row.avatar_text,
     coachNote: row.coach_note || "",
     language: row.language || "en",
+    playerEmail: row.player_email || "",
   };
 }
 
@@ -133,6 +135,7 @@ function appPlayerToDb(player, coachId) {
     avatar_text: player.avatarText,
     coach_note: player.coachNote || "",
     language: player.language || "en",
+    player_email: player.playerEmail ? player.playerEmail.trim().toLowerCase() : null,
   };
 }
 
@@ -1288,12 +1291,12 @@ function ModuleBuilder({ players, savedModules, onSaveModule, onDeleteModule, on
 
 // ── Add Player Modal ──────────────────────────────────────────────────────────
 function AddPlayerModal({ onAdd, onClose }) {
-  const [name,setName]=useState(""); const [position,setPosition]=useState("Center back"); const [age,setAge]=useState("U14"); const [coachNote,setCoachNote]=useState(""); const [language,setLanguage]=useState("en");
+  const [name,setName]=useState(""); const [position,setPosition]=useState("Center back"); const [age,setAge]=useState("U14"); const [coachNote,setCoachNote]=useState(""); const [language,setLanguage]=useState("en"); const [playerEmail,setPlayerEmail]=useState("");
   const colors=[{bg:C.greenLight,text:C.greenDark},{bg:C.blueLight,text:"#0C447C"},{bg:C.amberLight,text:"#633806"},{bg:C.purpleLight,text:"#3C3489"},{bg:C.coralLight,text:"#712B13"}];
-  function add(){ if(!name.trim())return; const initials=name.trim().split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); const c=colors[Math.floor(Math.random()*colors.length)]; onAdd({ id:crypto.randomUUID ? crypto.randomUUID() : "p-"+Date.now(), name:name.trim(), position, age, avatar:initials, avatarColor:c.bg, avatarText:c.text, coachNote:coachNote.trim(), language }); }
+  function add(){ if(!name.trim())return; const initials=name.trim().split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); const c=colors[Math.floor(Math.random()*colors.length)]; onAdd({ id:crypto.randomUUID ? crypto.randomUUID() : "p-"+Date.now(), name:name.trim(), position, age, avatar:initials, avatarColor:c.bg, avatarText:c.text, coachNote:coachNote.trim(), language, playerEmail:playerEmail.trim().toLowerCase() }); }
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:200, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-      <div style={{ background:C.white, borderRadius:"16px 16px 0 0", padding:20, width:"100%", maxWidth:480 }}>
+      <div style={{ background:C.white, borderRadius:"16px 16px 0 0", padding:20, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto" }}>
         <div style={{ ...s.row, marginBottom:20 }}><div style={s.h2}>Add player</div><button style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontSize:18, color:C.gray }} onClick={onClose}>✕</button></div>
         <input style={s.input} placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} autoFocus/>
         <div style={s.label}>Position</div>
@@ -1304,6 +1307,9 @@ function AddPlayerModal({ onAdd, onClose }) {
         <div style={{ ...s.chipRow, marginBottom:14 }}>
           {[["en","🇺🇸 English"],["es","🇲🇽 Español"]].map(([code,label])=>(<div key={code} style={s.chip(language===code)} onClick={()=>setLanguage(code)}>{label}</div>))}
         </div>
+        <div style={s.label}>Player email <span style={{ fontSize:11, color:C.gray, fontWeight:400 }}>— lets them log in independently on their own phone (optional)</span></div>
+        <input style={{ ...s.input, marginBottom:6 }} placeholder="e.g. jake@email.com" value={playerEmail} onChange={e=>setPlayerEmail(e.target.value)} type="email" autoCapitalize="none" autoCorrect="off"/>
+        <div style={{ fontSize:11, color:C.textMuted, marginBottom:14, lineHeight:1.5 }}>💡 U15 and above — add their email so they can log in on their own phone. U13–U14 — leave blank and use your phone for now.</div>
         <div style={s.label}>Coach note <span style={{ fontSize:11, color:C.gray, fontWeight:400 }}>— soccer IQ context for the AI coach (optional)</span></div>
         <textarea style={{ ...s.input, height:72, resize:"none", fontSize:13, marginBottom:16 }} placeholder="e.g. Strong positionally, needs to communicate more. Goes backwards under pressure instead of turning." value={coachNote} onChange={e=>setCoachNote(e.target.value)}/>
         <button style={s.btn(C.green,C.white,true)} onClick={add}>Add to roster</button>
@@ -1314,11 +1320,11 @@ function AddPlayerModal({ onAdd, onClose }) {
 
 // ── Edit Player Modal ──────────────────────────────────────────────────────────
 function EditPlayerModal({ player, onSave, onClose }) {
-  const [name,setName]=useState(player.name); const [position,setPosition]=useState(player.position); const [age,setAge]=useState(player.age); const [coachNote,setCoachNote]=useState(player.coachNote||""); const [language,setLanguage]=useState(player.language||"en");
-  function save(){ if(!name.trim())return; const initials=name.trim().split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); onSave({ ...player, name:name.trim(), position, age, avatar:initials, coachNote:coachNote.trim(), language }); }
+  const [name,setName]=useState(player.name); const [position,setPosition]=useState(player.position); const [age,setAge]=useState(player.age); const [coachNote,setCoachNote]=useState(player.coachNote||""); const [language,setLanguage]=useState(player.language||"en"); const [playerEmail,setPlayerEmail]=useState(player.playerEmail||"");
+  function save(){ if(!name.trim())return; const initials=name.trim().split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); onSave({ ...player, name:name.trim(), position, age, avatar:initials, coachNote:coachNote.trim(), language, playerEmail:playerEmail.trim().toLowerCase() }); }
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:200, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-      <div style={{ background:C.white, borderRadius:"16px 16px 0 0", padding:20, width:"100%", maxWidth:480 }}>
+      <div style={{ background:C.white, borderRadius:"16px 16px 0 0", padding:20, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto" }}>
         <div style={{ ...s.row, marginBottom:20 }}><div style={s.h2}>Edit player</div><button style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", fontSize:18, color:C.gray }} onClick={onClose}>✕</button></div>
         <input style={s.input} placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} autoFocus/>
         <div style={s.label}>Position</div>
@@ -1329,6 +1335,11 @@ function EditPlayerModal({ player, onSave, onClose }) {
         <div style={{ ...s.chipRow, marginBottom:14 }}>
           {[["en","🇺🇸 English"],["es","🇲🇽 Español"]].map(([code,label])=>(<div key={code} style={s.chip(language===code)} onClick={()=>setLanguage(code)}>{label}</div>))}
         </div>
+        <div style={s.label}>Player email <span style={{ fontSize:11, color:C.gray, fontWeight:400 }}>— lets them log in on their own phone (optional)</span></div>
+        <input style={{ ...s.input, marginBottom:6 }} placeholder="e.g. jake@email.com" value={playerEmail} onChange={e=>setPlayerEmail(e.target.value)} type="email" autoCapitalize="none" autoCorrect="off"/>
+        <div style={{ fontSize:11, color:C.textMuted, marginBottom:14, lineHeight:1.5 }}>
+          {playerEmail ? `✓ ${playerEmail.split("@")[0]} can log in independently at mindpitch.net` : "No email set — use your phone to run modules for this player."}
+        </div>
         <div style={s.label}>Coach note <span style={{ fontSize:11, color:C.gray, fontWeight:400 }}>— soccer IQ context for the AI coach (optional)</span></div>
         <textarea style={{ ...s.input, height:72, resize:"none", fontSize:13, marginBottom:16 }} placeholder="e.g. Strong positionally, needs to communicate more. Goes backwards under pressure instead of turning." value={coachNote} onChange={e=>setCoachNote(e.target.value)}/>
         <button style={s.btn(C.green,C.white,true)} onClick={save}>Save changes</button>
@@ -1337,9 +1348,323 @@ function EditPlayerModal({ player, onSave, onClose }) {
   );
 }
 
+// ── Founder Dashboard ─────────────────────────────────────────────────────────
+function FounderDashboard({ players, assignments, savedModules }) {
+  const [tab,setTab]=useState("overview");
+  const completed=assignments.filter(a=>a.status==="completed");
+  const pending=assignments.filter(a=>a.status!=="completed");
+  const completionRate=assignments.length?Math.round(completed.length/assignments.length*100):0;
+  const spanishPlayers=players.filter(p=>p.language==="es");
+  const apiCost=(assignments.length*0.03).toFixed(2);
+
+  const DEMO_CLUBS=[
+    {name:"Silicon Valley FC",coaches:5,players:18,rate:87,status:"Active",sc:C.green,sb:C.greenLight},
+    {name:"FC Bay Area",coaches:4,players:22,rate:61,status:"Check in",sc:C.amber,sb:C.amberLight},
+    {name:"Nor-Cal United",coaches:5,players:players.length,rate:completionRate,status:"Active",sc:C.green,sb:C.greenLight},
+  ];
+
+  const tabs=[["overview","Overview"],["clubs","Clubs"],["engagement","Engagement"],["product","Product"],["revenue","Revenue"]];
+
+  return (
+    <div style={{ ...s.screen, paddingBottom:20 }}>
+      <div style={{ background:C.navy, borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
+        <div style={{ ...s.row, marginBottom:4 }}>
+          <div style={s.logo}><div style={s.logoDot}/>MINDPITCH</div>
+          <span style={{ fontSize:11, fontWeight:500, padding:"3px 10px", borderRadius:20, background:"rgba(29,158,117,0.2)", border:"0.5px solid rgba(29,158,117,0.4)", color:C.green }}>Founder view</span>
+        </div>
+        <div style={{ fontSize:12, color:"#9FE1CB" }}>Platform dashboard · Live data</div>
+      </div>
+
+      <div style={{ display:"flex", gap:4, marginBottom:16, overflowX:"auto", paddingBottom:4 }}>
+        {tabs.map(([key,label])=>(
+          <button key={key} onClick={()=>setTab(key)} style={{ padding:"6px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:11, fontWeight:500, whiteSpace:"nowrap", background:tab===key?C.navy:C.white, color:tab===key?C.white:C.gray, flexShrink:0 }}>{label}</button>
+        ))}
+      </div>
+
+      {tab==="overview"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Platform · July 2026</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
+          {[[`${completionRate}%`,"Completion",C.green],[players.length,"Players",C.text],[assignments.length,"Modules",C.text]].map(([v,l,c])=>(
+            <div key={l} style={s.metric}><div style={{ ...s.metricVal, color:c }}>{v}</div><div style={s.metricLabel}>{l}</div></div>
+          ))}
+        </div>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Alerts — act on these</div>
+        <div style={s.card}>
+          {[
+            [C.amberLight,C.amber,"👁","FC Bay Area — coach inactive 9 days","Coach Rivera hasn't assigned a module since last week. Send a check-in before they disengage."],
+            [C.greenLight,C.green,"★","Silicon Valley FC — pilot ending in 12 days","87% completion rate. Best candidate for first conversion conversation."],
+            [C.blueLight,C.blue,"↑",`AI usage up · $${apiCost} this month`,"Well within the $50 cap. Coaches are engaging with the AI builder."],
+          ].map(([bg,tc,ic,title,desc],i,arr)=>(
+            <div key={i} style={{ padding:"11px 14px", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none", display:"flex", alignItems:"flex-start", gap:10 }}>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:bg, color:tc, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0 }}>{ic}</div>
+              <div><div style={{ fontSize:13, fontWeight:500, color:C.navy, marginBottom:2 }}>{title}</div><div style={{ fontSize:12, color:C.textMuted, lineHeight:1.5 }}>{desc}</div></div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:4 }}>
+          <div style={s.metric}><div style={{ fontSize:14, fontWeight:500, color:C.green, marginBottom:3 }}>Mistake recovery</div><div style={s.metricLabel}>Most assigned module</div></div>
+          <div style={s.metric}><div style={{ ...s.metricVal, fontSize:20 }}>{spanishPlayers.length}</div><div style={s.metricLabel}>Spanish players</div></div>
+        </div>
+      </>)}
+
+      {tab==="clubs"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>All pilot clubs</div>
+        <div style={s.card}>
+          {DEMO_CLUBS.map((c,i)=>(
+            <div key={c.name} style={{ padding:"12px 14px", borderBottom:i<DEMO_CLUBS.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB, marginBottom:6 }}>
+                <div><div style={{ fontWeight:600, fontSize:14, color:C.navy }}>{c.name}</div><div style={s.muted}>{c.coaches} coaches · {c.players} players</div></div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:16, fontWeight:600, color:c.rate>=80?C.green:C.amber }}>{c.rate}%</div>
+                  <span style={{ fontSize:10, fontWeight:500, padding:"2px 8px", borderRadius:20, background:c.sb, color:c.sc }}>{c.status}</span>
+                </div>
+              </div>
+              <div style={{ height:4, background:C.greenLight, borderRadius:2, overflow:"hidden" }}>
+                <div style={{ width:`${c.rate}%`, height:4, background:c.rate>=80?C.green:C.amber, borderRadius:2 }}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>)}
+
+      {tab==="engagement"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Coach engagement</div>
+        <div style={s.card}>
+          {[
+            ["Coach Martinez","Silicon Valley FC","Today",100,C.green,C.greenLight,"Thriving"],
+            ["Coach Rivera","FC Bay Area","9 days ago",20,C.amber,C.amberLight,"Check in"],
+            ["Coach Chen","Nor-Cal United","2 days ago",72,C.green,C.greenLight,"Active"],
+            ["Coach Williams","Silicon Valley FC","Yesterday",88,C.green,C.greenLight,"Active"],
+          ].map(([ name,club,last,pct,tc,bg,status],i,arr)=>(
+            <div key={name} style={{ padding:"11px 14px", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB, marginBottom:6 }}>
+                <div style={s.row}>
+                  <div style={{ width:32, height:32, borderRadius:"50%", background:C.greenLight, color:C.greenDark, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:600, flexShrink:0 }}>{name.split(" ")[1].slice(0,2)}</div>
+                  <div><div style={{ fontSize:13, fontWeight:500, color:C.navy }}>{name}</div><div style={s.muted}>{club} · {last}</div></div>
+                </div>
+                <span style={{ fontSize:10, fontWeight:500, padding:"2px 8px", borderRadius:20, background:bg, color:tc }}>{status}</span>
+              </div>
+              <div style={{ height:4, background:C.greenLight, borderRadius:2, overflow:"hidden" }}>
+                <div style={{ width:`${pct}%`, height:4, background:tc, borderRadius:2 }}/>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...s.sectionTitle, marginTop:8, marginBottom:10 }}>Players overdue 7+ days</div>
+        <div style={s.card}>
+          {pending.slice(0,3).map((a,i)=>{ const player=players.find(p=>p.id===a.playerId); if(!player)return null; return (
+            <div key={a.id} style={{ padding:"10px 14px", borderBottom:i<2?`0.5px solid ${C.grayMid}20`:"none", display:"flex", alignItems:"center", gap:8 }}>
+              <Avatar player={player}/>
+              <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight:500, color:C.navy }}>{player.name}</div><div style={s.muted}>Module assigned · pending</div></div>
+              <span style={{ fontSize:10, fontWeight:500, padding:"2px 8px", borderRadius:20, background:C.amberLight, color:C.amber }}>Pending</span>
+            </div>
+          );})}
+        </div>
+      </>)}
+
+      {tab==="product"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Module performance</div>
+        <div style={s.card}><div style={s.cardPad}>
+          {[["Mistake recovery",84,C.green],["Confidence slumps",77,C.blue],["Bench mentality",81,C.purple],["Pre-game anxiety",72,C.coral],["New to the team",57,C.amber]].map(([title,rate,color],i,arr)=>(
+            <div key={title} style={{ padding:"8px 0", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB, marginBottom:4 }}><span style={{ fontSize:13, color:C.navy }}>{title}</span><span style={{ fontSize:12, fontWeight:600, color }}>{rate}%</span></div>
+              <div style={{ height:4, background:C.greenLight, borderRadius:2, overflow:"hidden" }}><div style={{ width:`${rate}%`, height:4, background:color, borderRadius:2 }}/></div>
+            </div>
+          ))}
+        </div></div>
+        <div style={{ ...s.sectionTitle, marginTop:8, marginBottom:10 }}>AI builder usage</div>
+        <div style={s.card}><div style={s.cardPad}>
+          {[["AI modules generated",savedModules.length||0],["Saved to library",Math.floor((savedModules.length||0)*0.6)],["Spanish conversations",spanishPlayers.length],["Avg messages per debrief","6.2"]].map(([l,v],i,arr)=>(
+            <div key={l} style={{ ...s.rowSB, padding:"7px 0", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <span style={{ fontSize:13, color:C.textMuted }}>{l}</span><span style={{ fontSize:13, fontWeight:600, color:C.navy }}>{v}</span>
+            </div>
+          ))}
+        </div></div>
+      </>)}
+
+      {tab==="revenue"&&(<>
+        <div style={{ background:C.greenLight, border:`0.5px solid ${C.green}40`, borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
+          <div style={{ fontSize:11, fontWeight:600, color:C.greenDark, marginBottom:6 }}>PILOT PHASE — $0 MRR</div>
+          <div style={{ fontSize:13, color:C.greenDark, lineHeight:1.65 }}>3 clubs on free 60-day pilot. First conversion opportunity: Silicon Valley FC pilot ends July 21 — 12 days away. At $99/team/month with 6 teams that's $594/month.</div>
+        </div>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Revenue potential</div>
+        <div style={s.card}><div style={s.cardPad}>
+          {[["Silicon Valley FC","6 teams","$594/mo",true],["FC Bay Area","4 teams","$396/mo",false],["Nor-Cal United","5 teams","$495/mo",false]].map(([club,teams,mrr,ready],i,arr)=>(
+            <div key={club} style={{ padding:"9px 0", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB }}><span style={{ fontSize:13, fontWeight:500, color:C.navy }}>{club}</span><span style={{ fontSize:14, fontWeight:600, color:ready?C.green:C.textMuted }}>{mrr}</span></div>
+              <div style={s.muted}>{teams} · $99/team/month</div>
+            </div>
+          ))}
+          <div style={{ borderTop:`0.5px solid ${C.grayMid}20`, paddingTop:10, marginTop:4, ...s.rowSB }}>
+            <span style={{ fontSize:13, fontWeight:600, color:C.navy }}>Total potential MRR</span>
+            <span style={{ fontSize:18, fontWeight:700, color:C.green }}>$1,485/mo</span>
+          </div>
+        </div></div>
+        <div style={s.card}><div style={s.cardPad}>
+          {[["API cost this month",`$${apiCost}`],["Projected at 3 paying clubs","~$12–18/mo"],["Gross margin at $1,485 MRR","~99%"],["Anthropic spending cap","$50/month"]].map(([l,v],i,arr)=>(
+            <div key={l} style={{ ...s.rowSB, padding:"7px 0", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <span style={{ fontSize:13, color:C.textMuted }}>{l}</span><span style={{ fontSize:13, fontWeight:600, color:C.navy }}>{v}</span>
+            </div>
+          ))}
+        </div></div>
+        <div style={{ background:C.greenLight, border:`0.5px solid ${C.green}40`, borderRadius:12, padding:"12px 14px", marginTop:4 }}>
+          <div style={{ fontSize:12, color:C.greenDark, lineHeight:1.65 }}><strong>Most important action:</strong> Call Silicon Valley FC director this week. 87% completion, all coaches active. This is your first paying club.</div>
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+// ── Director Dashboard ────────────────────────────────────────────────────────
+function DirectorDashboard({ players, assignments }) {
+  const [tab,setTab]=useState("overview");
+  const completed=assignments.filter(a=>a.status==="completed");
+  const pending=assignments.filter(a=>a.status!=="completed");
+  const completionRate=assignments.length?Math.round(completed.length/assignments.length*100):0;
+
+  const TEAMS=[
+    {name:"U14 Boys",coach:"Coach Martinez",players:6,completed:8,assigned:8,rate:100,color:C.green,bg:C.greenLight,status:"Outstanding"},
+    {name:"U16 Girls",coach:"Coach Williams",players:5,completed:5,assigned:6,rate:83,color:C.blue,bg:C.blueLight,status:"Strong"},
+    {name:"U15 Boys",coach:"Coach Garcia",players:players.length,completed:completed.length,assigned:assignments.length,rate:completionRate,color:completionRate>=80?C.green:C.amber,bg:completionRate>=80?C.greenLight:C.amberLight,status:completionRate>=80?"Strong":"Building"},
+    {name:"U13 Boys",coach:"Coach Chen",players:5,completed:3,assigned:5,rate:60,color:C.amber,bg:C.amberLight,status:"Building"},
+    {name:"U17 Girls",coach:"Coach Kim",players:4,completed:4,assigned:5,rate:80,color:C.purple,bg:C.purpleLight,status:"Strong"},
+  ];
+
+  const tabs=[["overview","Club overview"],["teams","Teams"],["coaches","Coaches"],["players","Players"]];
+
+  return (
+    <div style={{ ...s.screen, paddingBottom:20 }}>
+      <div style={{ background:C.navy, borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
+        <div style={{ ...s.row, marginBottom:4 }}>
+          <div style={s.logo}><div style={s.logoDot}/>MINDPITCH</div>
+          <span style={{ fontSize:11, fontWeight:500, padding:"3px 10px", borderRadius:20, background:"rgba(29,158,117,0.2)", border:"0.5px solid rgba(29,158,117,0.4)", color:C.green }}>Director view</span>
+        </div>
+        <div style={{ fontSize:12, color:"#9FE1CB" }}>Silicon Valley FC · Pilot ends Sept 19</div>
+      </div>
+
+      <div style={{ display:"flex", gap:3, marginBottom:16, overflowX:"auto", paddingBottom:4 }}>
+        {tabs.map(([key,label])=>(
+          <button key={key} onClick={()=>setTab(key)} style={{ padding:"6px 12px", borderRadius:20, border:"none", cursor:"pointer", fontSize:11, fontWeight:500, whiteSpace:"nowrap", background:tab===key?C.navy:C.white, color:tab===key?C.white:C.gray, flexShrink:0 }}>{label}</button>
+        ))}
+      </div>
+
+      {tab==="overview"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Silicon Valley FC · July 2026</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, marginBottom:14 }}>
+          {[[`${completionRate}%`,"Club completion",C.green],[players.length,"Players active",C.text],[assignments.length,"Modules assigned",C.text],[completed.length,"Completed",C.green]].map(([v,l,c])=>(
+            <div key={l} style={s.metric}><div style={{ ...s.metricVal, color:c }}>{v}</div><div style={s.metricLabel}>{l}</div></div>
+          ))}
+        </div>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>What your coaches are seeing</div>
+        <div style={s.card}>
+          {[
+            [C.greenLight,C.greenDark,"✓","U14 Boys — 100% completion this week","Coach Martinez reports noticeable change in how players talk about mistakes after training."],
+            [C.greenLight,C.greenDark,"✓","U16 Girls — confidence module complete","One player who had been disengaging is now asking for the ball in tight spaces again."],
+            [C.amberLight,"#633806","👁","U13 Boys — 2 players not started","Module assigned 5 days ago. Coach Chen following up at today's training."],
+          ].map(([bg,tc,ic,title,desc],i,arr)=>(
+            <div key={i} style={{ padding:"11px 14px", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none", display:"flex", alignItems:"flex-start", gap:10 }}>
+              <div style={{ width:26, height:26, borderRadius:"50%", background:bg, color:tc, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0 }}>{ic}</div>
+              <div><div style={{ fontSize:13, fontWeight:500, color:C.navy, marginBottom:2 }}>{title}</div><div style={{ fontSize:12, color:C.textMuted, lineHeight:1.5 }}>{desc}</div></div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background:C.greenLight, border:`0.5px solid ${C.green}40`, borderRadius:12, padding:"12px 14px", marginTop:8 }}>
+          <div style={{ fontSize:12, color:C.greenDark, lineHeight:1.65 }}><strong>Pilot ends Sept 19 — 61 days away.</strong> At $99/team/month for your teams that's a straightforward monthly investment. Talk to your MindPitch contact about converting before the season ends.</div>
+        </div>
+      </>)}
+
+      {tab==="teams"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>All teams</div>
+        <div style={s.card}>
+          {TEAMS.map((t,i)=>(
+            <div key={t.name} style={{ padding:"12px 14px", borderBottom:i<TEAMS.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB, marginBottom:6 }}>
+                <div>
+                  <div style={{ fontSize:14, fontWeight:500, color:C.navy }}>{t.name}</div>
+                  <div style={s.muted}>{t.coach} · {t.players} players</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:16, fontWeight:600, color:t.color }}>{t.rate}%</div>
+                  <span style={{ fontSize:10, fontWeight:500, padding:"2px 8px", borderRadius:20, background:t.bg, color:t.color }}>{t.status}</span>
+                </div>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ flex:1, height:4, background:C.greenLight, borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ width:`${t.rate}%`, height:4, background:t.color, borderRadius:2 }}/>
+                </div>
+                <span style={{ fontSize:11, color:C.textMuted }}>{t.completed}/{t.assigned}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...s.sectionTitle, marginTop:8, marginBottom:10 }}>Club health</div>
+        <div style={s.card}><div style={s.cardPad}>
+          {[["Teams above 80%",`${TEAMS.filter(t=>t.rate>=80).length} of ${TEAMS.length}`,C.green],["Teams at 100%",`${TEAMS.filter(t=>t.rate===100).length} of ${TEAMS.length}`,C.green],["Teams needing attention",`${TEAMS.filter(t=>t.rate<70).length}`,C.amber],["Club average",`${Math.round(TEAMS.reduce((s,t)=>s+t.rate,0)/TEAMS.length)}%`,C.navy]].map(([l,v,c],i,arr)=>(
+            <div key={l} style={{ ...s.rowSB, padding:"7px 0", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <span style={{ fontSize:13, color:C.textMuted }}>{l}</span><span style={{ fontSize:13, fontWeight:600, color:c }}>{v}</span>
+            </div>
+          ))}
+        </div></div>
+      </>)}
+
+      {tab==="coaches"&&(<>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Coaching staff</div>
+        <div style={s.card}>
+          {TEAMS.map((t,i)=>(
+            <div key={t.name} style={{ padding:"11px 14px", borderBottom:i<TEAMS.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB, marginBottom:6 }}>
+                <div style={s.row}>
+                  <div style={{ width:32, height:32, borderRadius:"50%", background:C.greenLight, color:C.greenDark, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:600, flexShrink:0 }}>{t.coach.split(" ")[1].slice(0,2)}</div>
+                  <div><div style={{ fontSize:13, fontWeight:500, color:C.navy }}>{t.coach}</div><div style={s.muted}>{t.name}</div></div>
+                </div>
+                <span style={{ fontSize:10, fontWeight:500, padding:"2px 8px", borderRadius:20, background:t.rate>=80?C.greenLight:C.amberLight, color:t.rate>=80?C.green:C.amber }}>{t.rate>=80?"Active":"Building"}</span>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ flex:1, maxWidth:120, height:4, background:C.greenLight, borderRadius:2, overflow:"hidden" }}>
+                  <div style={{ width:`${t.rate}%`, height:4, background:t.rate>=80?C.green:C.amber, borderRadius:2 }}/>
+                </div>
+                <span style={{ fontSize:11, color:C.textMuted }}>{t.assigned} modules · {t.rate}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background:C.greenLight, border:`0.5px solid ${C.green}40`, borderRadius:12, padding:"12px 14px", marginTop:8 }}>
+          <div style={{ fontSize:12, color:C.greenDark, lineHeight:1.65 }}>All coaches are actively using MindPitch. The platform is working across your entire coaching staff — not just one or two early adopters.</div>
+        </div>
+      </>)}
+
+      {tab==="players"&&(<>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+          <div style={s.metric}><div style={{ ...s.metricVal, color:C.green }}>{completed.length}</div><div style={s.metricLabel}>Modules completed</div></div>
+          <div style={s.metric}><div style={{ ...s.metricVal, color:C.amber }}>{pending.length}</div><div style={s.metricLabel}>Modules pending</div></div>
+        </div>
+        <div style={{ ...s.sectionTitle, marginBottom:10 }}>Mental habits being practised</div>
+        <div style={s.card}><div style={s.cardPad}>
+          {[["The flush it routine","Reset after mistakes — one breath, clap, reset word",12,C.green],["The one brave action","Pre-session commitment to one confident choice",8,C.blue],["The scout mindset","Staying engaged and observant from the bench",5,C.purple],["The reset anchor","Pre-match mental film — see the right decision first",4,C.amber]].map(([habit,desc,count,color],i,arr)=>(
+            <div key={habit} style={{ padding:"9px 0", borderBottom:i<arr.length-1?`0.5px solid ${C.grayMid}20`:"none" }}>
+              <div style={{ ...s.rowSB, marginBottom:3 }}>
+                <span style={{ fontSize:13, fontWeight:500, color:C.navy }}>{habit}</span>
+                <span style={{ fontSize:12, fontWeight:600, color }}>{count} players</span>
+              </div>
+              <div style={s.muted}>{desc}</div>
+              <div style={{ height:4, background:C.greenLight, borderRadius:2, overflow:"hidden", marginTop:6 }}>
+                <div style={{ width:`${Math.round(count/players.length*100)}%`, height:4, background:color, borderRadius:2 }}/>
+              </div>
+            </div>
+          ))}
+        </div></div>
+        <div style={{ background:C.greenLight, border:`0.5px solid ${C.green}40`, borderRadius:12, padding:"12px 14px", marginTop:8 }}>
+          <div style={{ fontSize:12, color:C.greenDark, lineHeight:1.65 }}><strong>Coaching tip:</strong> These are observable behaviours — ask your coaches what they're noticing on the training pitch that corresponds to these habits.</div>
+        </div>
+      </>)}
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [role,setRole]=useState("coach");
+  const ROLES=[["coach","Coach view"],["player","Player view"],["director","Director view"],["founder","Founder view"]];
   const [coachTab,setCoachTab]=useState("dashboard");
   const [playerTab,setPlayerTab]=useState("modules");
   const [players,setPlayers]=useState([]);
@@ -1428,6 +1753,103 @@ export default function App() {
     }
   }
 
+  async function loadAllCloudData() {
+    if (!supabase) return;
+    const [playersRes, assignmentsRes, modulesRes] = await Promise.all([
+      supabase.from("players").select("*").order("created_at", { ascending:true }),
+      supabase.from("assignments").select("*").order("created_at", { ascending:true }),
+      supabase.from("ai_modules").select("*").order("created_at", { ascending:false }),
+    ]);
+
+    if (playersRes.error) throw playersRes.error;
+    if (assignmentsRes.error) throw assignmentsRes.error;
+    if (modulesRes.error) throw modulesRes.error;
+
+    const loadedPlayers = (playersRes.data || []).map(dbPlayerToApp);
+    setPlayers(loadedPlayers);
+    setAssignments((assignmentsRes.data || []).map(dbAssignmentToApp));
+    setSavedModules((modulesRes.data || []).map(dbSavedModuleToApp));
+    setSelectedPlayer(null);
+    setActiveModule(null);
+    setViewingAs(current => loadedPlayers.find(p=>p.id===current?.id) || loadedPlayers[0] || null);
+  }
+
+  async function loadPlayerCloudData(userEmail) {
+    if (!supabase || !userEmail) return false;
+    const normalizedEmail = userEmail.trim().toLowerCase();
+
+    const { data: playerRow, error: playerError } = await supabase
+      .from("players")
+      .select("*")
+      .ilike("player_email", normalizedEmail)
+      .limit(1)
+      .maybeSingle();
+
+    if (playerError) throw playerError;
+    if (!playerRow) return false;
+
+    const { data: assignmentRows, error: assignmentError } = await supabase
+      .from("assignments")
+      .select("*")
+      .eq("player_id", playerRow.id)
+      .order("created_at", { ascending:true });
+
+    if (assignmentError) throw assignmentError;
+
+    const player = dbPlayerToApp(playerRow);
+    const playerAssignments = (assignmentRows || []).map(dbAssignmentToApp);
+
+    setRole("player");
+    setPlayers([player]);
+    setAssignments(playerAssignments);
+    setSavedModules([]);
+    setSelectedPlayer(null);
+    setActiveModule(null);
+    setViewingAs(player);
+    setPlayerTab("modules");
+    return true;
+  }
+
+  async function getRoleForEmail(userEmail) {
+    if (!supabase || !userEmail) return "coach";
+    const normalizedEmail = userEmail.trim().toLowerCase();
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .ilike("email", normalizedEmail)
+      .limit(1)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") throw error;
+    return data?.role || "coach";
+  }
+
+  async function loadSessionData(currentSession) {
+    if (!supabase || !currentSession?.user) return;
+    setDataLoading(true);
+    try {
+      const userEmail = currentSession.user.email || "";
+
+      const isPlayer = await loadPlayerCloudData(userEmail);
+      if (isPlayer) return;
+
+      const nextRole = await getRoleForEmail(userEmail);
+      setRole(nextRole);
+
+      if (nextRole === "director" || nextRole === "founder") {
+        await loadAllCloudData();
+      } else {
+        await ensureCoachProfile(currentSession.user);
+        await loadCloudData(currentSession.user.id);
+      }
+    } catch (error) {
+      console.error("Supabase role/data load failed", error);
+      alert("Could not load MindPitch data from Supabase. Check player email, user role, RLS policies, and console logs.");
+    } finally {
+      setDataLoading(false);
+    }
+  }
+
   async function ensureCoachProfile(user) {
     if (!supabase || !user) return;
     const { error } = await supabase.from("coach_profiles").upsert({
@@ -1468,9 +1890,9 @@ export default function App() {
   useEffect(()=>{
     if (!isSupabaseConfigured || !supabase) return;
     if (session?.user) {
-      ensureCoachProfile(session.user);
-      loadCloudData(session.user.id);
+      loadSessionData(session);
     } else {
+      setRole("coach");
       setPlayers([]);
       setAssignments([]);
       setSavedModules([]);
@@ -1478,7 +1900,7 @@ export default function App() {
       setViewingAs(null);
       setActiveModule(null);
     }
-  },[session]);
+  },[session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (players.length === 0) {
@@ -1583,6 +2005,23 @@ export default function App() {
   }
 
   async function updateAssignment(updated){
+    if (supabase && session?.user && role === "player") {
+      const { data, error } = await supabase
+        .from("assignments")
+        .update({
+          status: updated.status,
+          responses: updated.responses || [],
+          completed_at: updated.completedAt || null,
+        })
+        .eq("id", updated.id)
+        .select()
+        .single();
+      if (error) throw error;
+      const saved = dbAssignmentToApp(data);
+      setAssignments(prev => prev.map(a=>a.id===saved.id?saved:a));
+      return saved;
+    }
+
     if (supabase && session?.user) {
       const { data, error } = await supabase
         .from("assignments")
@@ -1654,6 +2093,7 @@ export default function App() {
   }
 
   const isCoach=role==="coach";
+  const roleOptions = role === "player" ? [["player","Player view"]] : ROLES;
 
   if (authLoading) {
     return (
@@ -1675,9 +2115,14 @@ export default function App() {
       <div style={s.navBar}>
         <div style={s.logo}><div style={s.logoDot}/>MindPitch</div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <button style={s.navRole} onClick={()=>{ setRole(isCoach?"player":"coach"); setCoachTab("dashboard"); setPlayerTab("modules"); setSelectedPlayer(null); setActiveModule(null); }}>
-            {isCoach?"Coach view":"Player view"} ↕
-          </button>
+          <select
+            value={role}
+            onChange={e=>{ setRole(e.target.value); setCoachTab("dashboard"); setPlayerTab("modules"); setSelectedPlayer(null); setActiveModule(null); }}
+            style={{ ...s.navRole, color:C.white, outline:"none" }}
+            aria-label="Switch MindPitch view"
+          >
+            {roleOptions.map(([r,label])=>(<option key={r} value={r}>{label}</option>))}
+          </select>
           {isSupabaseConfigured&&session&&(
             <button style={s.navRole} onClick={signOut}>Sign out</button>
           )}
@@ -1706,7 +2151,7 @@ export default function App() {
         </>
       )}
 
-      {!isCoach&&(
+      {role==="player"&&(
         <>
           {activeModule?(
             <ModuleExperience assignment={activeModule.assignment} module={activeModule.module} player={viewingAs} onComplete={updated=>{ updateAssignment(updated); setActiveModule(null); }} onBack={()=>setActiveModule(null)}/>
@@ -1749,6 +2194,10 @@ export default function App() {
           )}
         </>
       )}
+
+
+      {role==="director"&&(<DirectorDashboard players={players} assignments={assignments}/>)}
+      {role==="founder"&&(<FounderDashboard players={players} assignments={assignments} savedModules={savedModules}/>) }
 
       {showAddPlayer&&<AddPlayerModal onAdd={addPlayer} onClose={()=>setShowAddPlayer(false)}/>}
       {editingPlayer&&<EditPlayerModal player={editingPlayer} onSave={editPlayer} onClose={()=>setEditingPlayer(null)}/>}
