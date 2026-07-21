@@ -1701,6 +1701,7 @@ export default function App() {
   const FOUNDER_EMAIL = "info@mindpitch.net";
   const [role,setRole]=useState("coach");
   const [accountEmail,setAccountEmail]=useState("");
+  const [accountRole,setAccountRole]=useState("coach");
   const ROLES=[["coach","Coach view"],["player","Player view"],["director","Director view"],["founder","Founder view"]];
   const [coachTab, setCoachTab] = useState("dashboard");
   const [playerTab, setPlayerTab] = useState("modules");
@@ -1836,6 +1837,7 @@ export default function App() {
     const player = dbPlayerToApp(playerRow);
     const playerAssignments = (assignmentRows || []).map(dbAssignmentToApp);
 
+    setAccountRole("player");
     setRole("player");
     setPlayers([player]);
     setAssignments(playerAssignments);
@@ -1881,6 +1883,7 @@ export default function App() {
       if (isPlayer) return;
 
       const nextRole = await getRoleForEmail(userEmail);
+      setAccountRole(nextRole);
       setRole(nextRole);
 
       if (nextRole === "director" || nextRole === "founder") {
@@ -2136,20 +2139,23 @@ export default function App() {
   }
 
   async function signOut() {
+    setRole("coach");
+    setAccountRole("coach");
+    setAccountEmail("");
     if (supabase) await supabase.auth.signOut();
   }
 
   const isCoach=role==="coach";
 
   const roleOptions =
-    role === "player"
+    accountRole === "player"
       ? [["player","Player view"]]
-      : accountEmail === FOUNDER_EMAIL
+      : accountRole === "founder" && accountEmail === FOUNDER_EMAIL
         ? ROLES
-        : role === "director"
+        : accountRole === "director"
           ? [["coach","Coach view"],["player","Player view"],["director","Director view"]]
           : [["coach","Coach view"],["player","Player view"]];
-          
+
   if (authLoading) {
     return (
       <div style={s.app}>
