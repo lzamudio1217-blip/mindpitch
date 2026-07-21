@@ -1698,8 +1698,10 @@ function DirectorDashboard({ players, assignments }) {
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [role, setRole] = useState("coach");
-  const ROLES = [["coach", "Coach view"], ["player", "Player view"], ["director", "Director view"], ["founder", "Founder view"]];
+  const FOUNDER_EMAIL = "info@mindpitch.net";
+  const [role,setRole]=useState("coach");
+  const [accountEmail,setAccountEmail]=useState("");
+  const ROLES=[["coach","Coach view"],["player","Player view"],["director","Director view"],["founder","Founder view"]];
   const [coachTab, setCoachTab] = useState("dashboard");
   const [playerTab, setPlayerTab] = useState("modules");
   const [players, setPlayers] = useState([]);
@@ -1846,19 +1848,29 @@ export default function App() {
   }
 
   async function getRoleForEmail(userEmail) {
-    if (!supabase || !userEmail) return "coach";
-    const normalizedEmail = userEmail.trim().toLowerCase();
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .ilike("email", normalizedEmail)
-      .limit(1)
-      .maybeSingle();
+  if (!supabase || !userEmail) return "coach";
 
-    if (error && error.code !== "PGRST116") throw error;
-    return data?.role || "coach";
+  const normalizedEmail = userEmail.trim().toLowerCase();
+  setAccountEmail(normalizedEmail);
+
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .ilike("email", normalizedEmail)
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") throw error;
+
+  const dbRole = data?.role || "coach";
+
+  // Founder view is only allowed for info@mindpitch.net
+  if (dbRole === "founder" && normalizedEmail !== FOUNDER_EMAIL) {
+    return "coach";
   }
 
+  return dbRole;
+  }
   async function loadSessionData(currentSession) {
     if (!supabase || !currentSession?.user) return;
     setDataLoading(true);
@@ -2127,9 +2139,17 @@ export default function App() {
     if (supabase) await supabase.auth.signOut();
   }
 
-  const isCoach = role === "coach";
-  const roleOptions = role === "player" ? [["player", "Player view"]] : ROLES;
+  const isCoach=role==="coach";
 
+  const roleOptions =
+    role === "player"
+      ? [["player","Player view"]]
+      : accountEmail === FOUNDER_EMAIL
+        ? ROLES
+        : role === "director"
+          ? [["coach","Coach view"],["player","Player view"],["director","Director view"]]
+          : [["coach","Coach view"],["player","Player view"]];
+          
   if (authLoading) {
     return (
       <div style={s.app}>
